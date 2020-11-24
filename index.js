@@ -4,7 +4,7 @@ const Hubs = require('./hubs/hubs-model.js');
 
 const server = express();
 
-server.use(express.json());
+server.use(express.json()); // Gives Express the ability to parse the req.body
 
 server.get('/', (req, res) => {
   res.send(`
@@ -14,6 +14,7 @@ server.get('/', (req, res) => {
 });
 
 server.get('/api/hubs', (req, res) => {
+  console.log(req.query) // http://localhost:4000/api/hubs?limit=20 // { foo: 'bar', baz: fizz' }
   Hubs.find(req.query)
   .then(hubs => {
     res.status(200).json(hubs);
@@ -97,7 +98,45 @@ server.put('/api/hubs/:id', (req, res) => {
 });
 
 // add an endpoint that returns all the messages for a hub
+server.get('/api/hubs/:id/messages', (req, res) => {
+  // We need to find a good function inside the model
+  Hubs.findHubMessages(req.params.id)
+    .then(data => {
+      // throw new Error('This is an error test!');
+      console.log(data);
+      if (!data.length) {
+        res.status(404).json({
+          message: 'No messages, OR no hub with id ' + req.params.id
+        })
+      } else {
+        res.status(200).json(data)
+      }
+    })
+    .catch(err => {
+      console.log(err.message, err.stack);
+      res.status(500).json({
+        message: err.message,
+        stack: err.stack
+      });
+    });
+});
+
 // add an endpoint for adding new message to a hub
+server.post('/api/hubs/:id/messages', (req, res) => {
+  const newMessage = { hub_id: req.params.id, ...req.body };
+  Hubs.addMessage(newMessage)
+    .then(data => {
+      console.log(data);
+      res.status(201).json(data);
+    })
+    .catch(err => {
+      console.log(err.message, err.stack);
+      res.status(500).json({
+        message: err.message,
+        stack: err.stack
+      });
+    });
+});
 
 server.listen(4000, () => {
   console.log('\n*** Server Running on http://localhost:4000 ***\n');
